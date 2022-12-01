@@ -2,11 +2,10 @@
   "name": "gha-cargo-upgrade",
   "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "lint-staged": {
     "*.{ts,js}": [
       "prettier --write --single-quote --print-width 120 --jsx-bracket-same-line true",
-      "tslint --fix",
       "git add"
     ]
   },
@@ -14,11 +13,11 @@
     "hooks": {
       "commit-msg": "commitlint -e",
       "pre-commit": "lint-staged",
-      "pre-push": "npm-run-all build test"
+      "pre-push": "npm-run-all build"
     }
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc && esbuild --bundle ./src/index.ts --outfile=./dist/index.js --target=node16 --platform=node"
   },
   "repository": {
     "type": "git",
@@ -32,13 +31,13 @@
   },
   "homepage": "https://github.com/kwonoj/gha-cargo-upgrade#readme",
   "devDependencies": {
+    "@actions/core": "^1.10.0",
+    "@actions/github": "^5.1.1",
+    "esbuild": "^0.15.16",
     "husky": "^8.0.2",
     "lint-staged": "^13.0.4",
+    "npm-run-all": "^4.1.5",
     "prettier": "^2.8.0",
     "typescript": "^4.9.3"
-  },
-  "dependencies": {
-    "@swc/core": "^1.3.21",
-    "@swc/register": "^0.1.10"
   }
 }

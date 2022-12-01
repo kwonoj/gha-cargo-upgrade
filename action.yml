@@ -1,0 +1,18 @@
+name: Cargo upgrade
+author: kwonoj
+description: Automatically create pull request to upgrade cargo dependencies
+
+branding:
+  icon: truck
+  color: green
+
+# inputs:
+  packages:
+    description: 'List of packages to upgrade'
+    required: false
+
+# outputs
+
+runs:
+  using: node16
+  main: dist/index.js
