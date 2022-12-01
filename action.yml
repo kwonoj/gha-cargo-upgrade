@@ -6,12 +6,22 @@ branding:
   icon: truck
   color: green
 
-# inputs:
+inputs:
+  token:
+    description: Token used to send pull requests
+    required: true
   packages:
     description: 'List of packages to upgrade'
+    required: true
+  branch_name:
+    description: 'Branch name to create pull request'
     required: false
-
-# outputs
+  notified_users:
+    description: 'Github users to notify when PR is created'
+    required: false
+  update_options:
+    description: 'Additional options to pass when running cargo upgrade'
+    required: false
 
 runs:
   using: node16
