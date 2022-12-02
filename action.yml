@@ -19,8 +19,11 @@ inputs:
   notified_users:
     description: 'Github users to notify when PR is created'
     required: false
-  update_options:
-    description: 'Additional options to pass when running cargo upgrade'
+  incompatible:
+    description: 'Enable cargo upgrade --incompatible'
+    required: false
+  manifest_path:
+    description: 'Directory to run cargo commands.'
     required: false
 
 runs:
