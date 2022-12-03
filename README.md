@@ -18,11 +18,6 @@ jobs:
       with:
         submodules: true
 
-    - name: Setup node
-      uses: actions/setup-node@v2
-      with:
-        node-version: 16
-
     - uses: actions/cache@v3
       with:
         path: |
