@@ -39,7 +39,10 @@ jobs:
       uses: kwonoj/gha-cargo-upgrade@read-config
       with:
         # Required, gh token for creating pull request
-        token: ${{ secrets.GITHUB_TOKEN }}
+        # This should be a personal token with repo access if you'd like to run CI actions.
+        # using default GITHUB_TOKEN will create PR with github-actions bot user, and it'll skip any CI actions.
+        # https://github.com/peter-evans/create-pull-request/issues/48
+        token: ${{ secrets.REPO_SCOPED_TOKEN }}
         # Required, packages to upgrade. "*" indicates upgrade all
         packages: "swc_core"
         # Optional, Custom branch name for the pull request
