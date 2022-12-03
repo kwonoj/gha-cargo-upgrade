@@ -40,7 +40,7 @@ const readActionConfig = (): UpdateActionConfig => {
     incompatible: getInput('incompatible') === 'true',
     ghToken: getInput('token', { required: true }),
     // [TODO] This is not configurable for now
-    prTitle: `[BOT]: build(cargo): upgrade dependencies ${upgradeAll ? '' : `for ${rawPackages}`}`,
+    prTitle: `[BOT] build(cargo): upgrade dependencies ${upgradeAll ? '' : `for ${rawPackages}`}`,
   }
 
   info(`readActionConfig: returning [${JSON.stringify(ret)}]`);
