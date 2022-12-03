@@ -9040,7 +9040,7 @@ var readActionConfig = () => {
     manifestPath: (0, import_core.getInput)("manifest_path"),
     incompatible: (0, import_core.getInput)("incompatible") === "true",
     ghToken: (0, import_core.getInput)("token", { required: true }),
-    prTitle: `[BOT]: build(cargo): upgrade dependencies ${upgradeAll ? "" : `for ${rawPackages}`}`
+    prTitle: `[BOT] build(cargo): upgrade dependencies ${upgradeAll ? "" : `for ${rawPackages}`}`
   };
   (0, import_core.info)(`readActionConfig: returning [${JSON.stringify(ret)}]`);
   return ret;
@@ -9180,7 +9180,7 @@ var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
 
   You can add new commits on top of this PR to do so. Then bot will not try to update PR and let you resolve it.
 
-  ${((notifiedUsers == null ? void 0 : notifiedUsers.length) ?? 0) > 0 ? `Bot could see there are some users may need :eye: on this PR, so mentioned in here: ${notifiedUsers == null ? void 0 : notifiedUsers.map((user) => `@${user}`)}` : ""}`;
+  ${((notifiedUsers == null ? void 0 : notifiedUsers.length) ?? 0) > 0 ? `Bot could see there are some users may check on this PR, so mentioned in here: ${notifiedUsers == null ? void 0 : notifiedUsers.map((user) => `@${user}`)}` : ""}`;
   const prResponse = await (0, import_octokit_plugin_create_pull_request.createPullRequest)(octokit).createPullRequest({
     ...import_github.context.repo,
     title: prTitle,
