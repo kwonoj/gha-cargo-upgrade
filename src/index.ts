@@ -201,7 +201,7 @@ const buildPullRequest = async (ghToken: string, branchName: string, prTitle: st
 
   You can add new commits on top of this PR to do so. Then bot will not try to update PR and let you resolve it.
 
-  ${(notifiedUsers?.length ?? 0) > 0 ? `Bot could see there are some users may need :eye: on this PR, so mentioned in here: ${notifiedUsers?.map((user) => `@${user}`)}` : ''}`;
+  ${(notifiedUsers?.length ?? 0) > 0 ? `Bot could see there are some users may check on this PR, so mentioned in here: ${notifiedUsers?.map((user) => `@${user}`)}` : ''}`;
 
   const prResponse = await createPullRequest(octokit).createPullRequest({
     ...context.repo,
