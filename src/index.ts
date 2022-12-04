@@ -146,7 +146,6 @@ const buildPullRequest = async (ghToken: string, branchName: string, prTitle: st
     await exec('cargo', ['check'], {
       listeners: {
         stderr: (data: Buffer) => checkErrorMsg += data.toString(),
-        stdout: (data: Buffer) => checkErrorMsg += data.toString(),
       }
     });
   } catch (e) {
