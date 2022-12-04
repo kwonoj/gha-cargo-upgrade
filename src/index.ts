@@ -175,13 +175,18 @@ const buildPullRequest = async (ghToken: string, branchName: string, prTitle: st
     deleted: true,
   });
 
+  info(`Found updated files: ${updatedFiles}`);
+
   // Create a changeset for the commit. We may need to update existing PR with new commits,
   // so for the conviniences always create a single PR only.
   const changes: import('octokit-plugin-create-pull-request/dist-types/types').Changes = updatedFiles.reduce((acc, file) => {
     if (acc.files) {
       acc.files[file] = ({ exists }) => {
         // do not create the file if it does not exist. We do not expect cargo update can create a new file.
-        if (!exists) return null;
+        if (!exists) {
+          info(`File ${file} does not exist, will not create it`);
+          return null;
+        }
 
         return readFileSync(file, 'utf-8');
       }

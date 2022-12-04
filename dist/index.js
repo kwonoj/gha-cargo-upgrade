@@ -9159,11 +9159,14 @@ var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
     added: true,
     deleted: true
   });
+  (0, import_core2.info)(`Found updated files: ${updatedFiles}`);
   const changes = updatedFiles.reduce((acc, file) => {
     if (acc.files) {
       acc.files[file] = ({ exists }) => {
-        if (!exists)
+        if (!exists) {
+          (0, import_core2.info)(`File ${file} does not exist, will not create it`);
           return null;
+        }
         return (0, import_fs.readFileSync)(file, "utf-8");
       };
     }
