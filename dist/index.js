@@ -9135,15 +9135,17 @@ var runUpgrade = async (packages, upgradeAll, incompatible) => {
   return true;
 };
 var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
-  let checkErrorMsg = "";
+  let checkOutput = "";
+  let isCheckSuccess = true;
   try {
     await (0, import_exec.exec)("cargo", ["check"], {
       listeners: {
-        stderr: (data) => checkErrorMsg += data.toString()
+        stdout: (data) => checkOutput += data.toString(),
+        stderr: (data) => checkOutput += data.toString()
       }
     });
   } catch (e) {
-    checkErrorMsg = e.message;
+    isCheckSuccess = false;
   }
   const octokit = (0, import_github.getOctokit)(ghToken);
   const currentOpenPullRequests = await octokit.paginate(octokit.rest.pulls.list, {
@@ -9196,14 +9198,14 @@ var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
   You can add new commits on top of this PR to do so. Then bot will not try to update PR and let you resolve it.
 
   ${((notifiedUsers == null ? void 0 : notifiedUsers.length) ?? 0) > 0 ? `Bot could see there are some users may check on this PR, so mentioned in here: ${notifiedUsers == null ? void 0 : notifiedUsers.map((user) => `@${user}`)}` : ""}`;
-  const prBody = checkErrorMsg !== "" ? `${basePRBody}
+  const prBody = isCheckSuccess ? basePRBody : `${basePRBody}
 
   It Looks like there were some errors while trying to upgrade dependencies. Please check below error message:
 
   \`\`\`
-  ${checkErrorMsg}
+  ${checkOutput}
   \`\`\`
-  ` : basePRBody;
+  `;
   const prResponse = await (0, import_octokit_plugin_create_pull_request.createPullRequest)(octokit).createPullRequest({
     ...import_github.context.repo,
     title: prTitle,

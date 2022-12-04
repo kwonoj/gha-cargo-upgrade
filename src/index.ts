@@ -141,15 +141,17 @@ const runUpgrade = async (packages: Array<string>, upgradeAll: boolean, incompat
  */
 const buildPullRequest = async (ghToken: string, branchName: string, prTitle: string, notifiedUsers?: Array<string>) => {
   // Basic sanity check to update cargo.lock, but proceed if we can't.
-  let checkErrorMsg = '';
+  let checkOutput = '';
+  let isCheckSuccess = true;
   try {
     await exec('cargo', ['check'], {
       listeners: {
-        stderr: (data: Buffer) => checkErrorMsg += data.toString(),
+        stdout: (data: Buffer) => checkOutput += data.toString(),
+        stderr: (data: Buffer) => checkOutput += data.toString(),
       }
     });
   } catch (e) {
-    checkErrorMsg = (e as any).message;
+    isCheckSuccess = false;
   }
 
 
@@ -225,14 +227,14 @@ const buildPullRequest = async (ghToken: string, branchName: string, prTitle: st
   ${(notifiedUsers?.length ?? 0) > 0 ? `Bot could see there are some users may check on this PR, so mentioned in here: ${notifiedUsers?.map((user) => `@${user}`)}` : ''}`;
 
 
-  const prBody = checkErrorMsg !== '' ? `${basePRBody}
+  const prBody = isCheckSuccess ? basePRBody : `${basePRBody}
 
   It Looks like there were some errors while trying to upgrade dependencies. Please check below error message:
 
   \`\`\`
-  ${checkErrorMsg}
+  ${checkOutput}
   \`\`\`
-  ` : basePRBody;
+  `;
 
   const prResponse = await createPullRequest(octokit).createPullRequest({
     ...context.repo,
