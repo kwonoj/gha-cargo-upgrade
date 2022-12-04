@@ -17,13 +17,16 @@ inputs:
     description: 'Branch name to create pull request'
     required: false
   notified_users:
-    description: 'Github users to notify when PR is created'
+    description: 'Comma seperated Github users to notify when PR is created'
     required: false
   incompatible:
     description: 'Enable cargo upgrade --incompatible'
     required: false
   manifest_path:
     description: 'Directory to run cargo commands.'
+    required: false
+  mandatory_packages:
+    description: 'Do not create PR if mandatory packages are not upgraded. Only works if packages are explicitly specified, instead of *'
     required: false
 
 runs:

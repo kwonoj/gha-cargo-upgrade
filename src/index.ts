@@ -1,8 +1,8 @@
-import { error, info } from '@actions/core'
+import { error, info } from '@actions/core';
 import { context, getOctokit } from '@actions/github';
 import { EOL } from 'os';
 import { exec } from '@actions/exec';
-import { readActionConfig } from "./read-action-config"
+import { readActionConfig } from './read-action-config';
 import { createPullRequest } from 'octokit-plugin-create-pull-request';
 import { readFileSync } from 'fs';
 
@@ -19,8 +19,8 @@ const checkCargoBinaries = async () => {
       let commandStdout = '';
       await exec('cargo', [command, '--version'], {
         listeners: {
-          stdout: (data: Buffer) => commandStdout += data.toString(),
-        }
+          stdout: (data: Buffer) => (commandStdout += data.toString()),
+        },
       });
       if (!commandStdout.includes(version)) {
         await exec('cargo', ['install', '--locked', '--force', `${binary}@${version}`]);
@@ -28,20 +28,22 @@ const checkCargoBinaries = async () => {
     } catch (e) {
       await exec('cargo', ['install', '--locked', '--force', `${binary}@${version}`]);
     }
-  }
+  };
 
   const cargoVersionResult = await exec('cargo', ['--version']);
   if (cargoVersionResult !== 0) {
-    throw new Error(`Action could not able to execute cargo command. Please check if cargo is installed and available in PATH`);
+    throw new Error(
+      `Action could not able to execute cargo command. Please check if cargo is installed and available in PATH`
+    );
   }
 
-  await tryInstall('upgrade', 'cargo-edit', "0.11.6");
-  await tryInstall('outdated', 'cargo-outdated', "0.11.1");
+  await tryInstall('upgrade', 'cargo-edit', '0.11.6');
+  await tryInstall('outdated', 'cargo-outdated', '0.11.1');
 
   // Check and throw directly. If this fails, we can't proceed as installation wasn't successful.
   await exec('cargo', ['upgrade', '--version']);
   await exec('cargo', ['outdated', '--version']);
-}
+};
 
 /**
  * Run `cargo-outdated` against given pkg if specified, then parse its output to determine if there are any outdated dependencies.
@@ -54,27 +56,29 @@ const checkOutdated = async (pkg?: string) => {
   const options = pkg ? ['outdated', '-p', pkg, '--format=json'] : ['outdated', '--format=json'];
   const outdatedExitcode = await exec('cargo', options, {
     listeners: {
-      stdout: (data: Buffer) => outdatedResult += data.toString(),
-    }
+      stdout: (data: Buffer) => (outdatedResult += data.toString()),
+    },
   });
   if (outdatedExitcode !== 0) {
     throw new Error(`Action could not able to check if package is outdated.`);
   }
   // cargo outdated can return multiple json under workspace
-  const results: Array<
-    {
-      crate_name: string,
-      dependencies: Array<{
-        name: string;
-        project: string;
-        latest: string;
-        compat: string;
-      }>
-    }> = outdatedResult.split(EOL).filter(x => x).map(x => JSON.parse(x));
+  const results: Array<{
+    crate_name: string;
+    dependencies: Array<{
+      name: string;
+      project: string;
+      latest: string;
+      compat: string;
+    }>;
+  }> = outdatedResult
+    .split(EOL)
+    .filter((x) => x)
+    .map((x) => JSON.parse(x));
 
   // Check if `depdenencies` contains matching package name.
   const isOutdated = results.reduce((acc, result) => {
-    if (result.dependencies.find(x => x.name === pkg)) {
+    if (result.dependencies.find((x) => x.name === pkg)) {
       return acc + 1;
     }
     return acc;
@@ -82,22 +86,27 @@ const checkOutdated = async (pkg?: string) => {
 
   info(`checkOutdated: [${pkg}] is outdated: ${isOutdated}`);
   return isOutdated > 0;
-}
+};
 
 /**
  * Run `cargo upgrade` against given pkg if specified. It only runs if there are any outdated dependencies.
  *
  * Returns true if upgrade performed, false otherwise.
  */
-const runUpgrade = async (packages: Array<string>, upgradeAll: boolean, incompatible: boolean): Promise<boolean> => {
-  const upgradedPackages: Array<string> = [];
+const runUpgrade = async (
+  packages: Array<string>,
+  upgradeAll: boolean,
+  incompatible: boolean,
+  mandatoryPackages: Array<string>
+): Promise<boolean> => {
+  const packagesToUpgrade: Array<string> = [];
   const upgrade = async (pkg?: string) => {
     const options = pkg ? ['upgrade', '-p', pkg, '--recursive', 'false'] : ['upgrade'];
     if (incompatible) {
       options.push('--incompatible');
     }
     await exec('cargo', options);
-  }
+  };
 
   // run cargo upgrade
   if (upgradeAll) {
@@ -113,25 +122,37 @@ const runUpgrade = async (packages: Array<string>, upgradeAll: boolean, incompat
     for (const pkg of packages) {
       const isOutdated = await checkOutdated(pkg);
       info(`Package [${pkg}] is outdated: ${isOutdated}`);
-      if (isOutdated && !upgradedPackages.includes(pkg)) {
-        upgradedPackages.push(pkg);
+      if (isOutdated && !packagesToUpgrade.includes(pkg)) {
+        packagesToUpgrade.push(pkg);
       }
     }
 
-    for (const pkg of upgradedPackages) {
+    info(`Found outdated packages: ${packagesToUpgrade}`);
+
+    if (mandatoryPackages.length > 0) {
+      const areAllPackagesReady = mandatoryPackages.every((pkg) => packagesToUpgrade.includes(pkg));
+      if (!areAllPackagesReady) {
+        info(`Not all mandatory packages are upgraded. Skipping PR creation`);
+        info(`Mandatory packages: ${mandatoryPackages}`);
+        return false;
+      }
+    }
+
+    for (const pkg of packagesToUpgrade) {
+      info(`Trying to upgrade package [${pkg}]`);
       await upgrade(pkg);
     }
 
-    if (upgradedPackages.length === 0) {
+    if (packagesToUpgrade.length === 0) {
       info(`No packages to upgrade`);
       return false;
     } else {
-      info(`Upgraded packages: ${upgradedPackages}`);
+      info(`Upgraded packages: ${packagesToUpgrade}`);
     }
   }
 
   return true;
-}
+};
 
 /**
  * Create a new, or update existing PR with latest changes for the upgrade.
@@ -139,21 +160,25 @@ const runUpgrade = async (packages: Array<string>, upgradeAll: boolean, incompat
  * This currently brute-force refresh PR everytime it runs even though current commit's changes are same as new one.
  * However, will hold updates if user manually add new commits to the PR.
  */
-const buildPullRequest = async (ghToken: string, branchName: string, prTitle: string, notifiedUsers?: Array<string>) => {
+const buildPullRequest = async (
+  ghToken: string,
+  branchName: string,
+  prTitle: string,
+  notifiedUsers?: Array<string>
+) => {
   // Basic sanity check to update cargo.lock, but proceed if we can't.
   let checkOutput = '';
   let isCheckSuccess = true;
   try {
     await exec('cargo', ['check'], {
       listeners: {
-        stdout: (data: Buffer) => checkOutput += data.toString(),
-        stderr: (data: Buffer) => checkOutput += data.toString(),
-      }
+        stdout: (data: Buffer) => (checkOutput += data.toString()),
+        stderr: (data: Buffer) => (checkOutput += data.toString()),
+      },
     });
   } catch (e) {
     isCheckSuccess = false;
   }
-
 
   const octokit = getOctokit(ghToken);
 
@@ -161,7 +186,7 @@ const buildPullRequest = async (ghToken: string, branchName: string, prTitle: st
   const currentOpenPullRequests = await octokit.paginate(octokit.rest.pulls.list, {
     ...context.repo,
     state: 'open',
-    per_page: 50
+    per_page: 50,
   });
 
   // Try to find if there's a PR opened by this action by branch name
@@ -171,7 +196,7 @@ const buildPullRequest = async (ghToken: string, branchName: string, prTitle: st
     info(`Found existing PR #${existingPR.number} for branch ${branchName}, will try to update it`);
     const current = await octokit.rest.pulls.get({
       ...context.repo,
-      pull_number: existingPR.number
+      pull_number: existingPR.number,
     });
 
     // Action will always create single commit, if there are other commits it should comes from user and won't update new one.
@@ -197,25 +222,28 @@ const buildPullRequest = async (ghToken: string, branchName: string, prTitle: st
 
   // Create a changeset for the commit. We may need to update existing PR with new commits,
   // so for the conviniences always create a single PR only.
-  const changes: import('octokit-plugin-create-pull-request/dist-types/types').Changes = updatedFiles.reduce((acc, file) => {
-    if (acc.files) {
-      acc.files[file] = ({ exists }) => {
-        // do not create the file if it does not exist. We do not expect cargo update can create a new file.
-        if (!exists) {
-          info(`File ${file} does not exist, will not create it`);
-          return null;
-        }
+  const changes: import('octokit-plugin-create-pull-request/dist-types/types').Changes = updatedFiles.reduce(
+    (acc, file) => {
+      if (acc.files) {
+        acc.files[file] = ({ exists }) => {
+          // do not create the file if it does not exist. We do not expect cargo update can create a new file.
+          if (!exists) {
+            info(`File ${file} does not exist, will not create it`);
+            return null;
+          }
 
-        return readFileSync(file, 'utf-8');
+          return readFileSync(file, 'utf-8');
+        };
       }
-    }
 
-    return acc;
-  }, {
-    files: {},
-    commit: 'build(cargo): update dependencies',
-    emptyCommit: false,
-  } as import('octokit-plugin-create-pull-request/dist-types/types').Changes);
+      return acc;
+    },
+    {
+      files: {},
+      commit: 'build(cargo): update dependencies',
+      emptyCommit: false,
+    } as import('octokit-plugin-create-pull-request/dist-types/types').Changes
+  );
 
   const basePRBody = `Hello! This is a friendly bot trying to update some of the dependencies in this repository.
 
@@ -224,10 +252,17 @@ const buildPullRequest = async (ghToken: string, branchName: string, prTitle: st
 
   You can add new commits on top of this PR to do so. Then bot will not try to update PR and let you resolve it.
 
-  ${(notifiedUsers?.length ?? 0) > 0 ? `Bot could see there are some users may check on this PR, so mentioned in here: ${notifiedUsers?.map((user) => `@${user}`)}` : ''}`;
+  ${
+    (notifiedUsers?.length ?? 0) > 0
+      ? `Bot could see there are some users may check on this PR, so mentioned in here: ${notifiedUsers?.map(
+          (user) => `@${user}`
+        )}`
+      : ''
+  }`;
 
-
-  const prBody = isCheckSuccess ? basePRBody : `${basePRBody}
+  const prBody = isCheckSuccess
+    ? basePRBody
+    : `${basePRBody}
 
   It Looks like there were some errors while trying to upgrade dependencies. Please check below error message:
 
@@ -251,14 +286,15 @@ const buildPullRequest = async (ghToken: string, branchName: string, prTitle: st
   } else {
     error(`Failed to create a PR`);
   }
-}
+};
 
 const main = async () => {
-  const { packages, upgradeAll, incompatible, ghToken, branchName, prTitle, notifiedUsers } = readActionConfig();
+  const { packages, upgradeAll, incompatible, ghToken, branchName, prTitle, notifiedUsers, mandatoryPackages } =
+    readActionConfig();
 
   await checkCargoBinaries();
-  await runUpgrade(packages, upgradeAll, incompatible);
+  await runUpgrade(packages, upgradeAll, incompatible, mandatoryPackages);
   await buildPullRequest(ghToken, branchName, prTitle, notifiedUsers);
-}
+};
 
 main();
