@@ -9018,6 +9018,7 @@ var import_exec = __toESM(require_exec());
 // src/read-action-config.ts
 var import_core = __toESM(require_core());
 var readActionConfig = () => {
+  var _a;
   const rawPackages = (0, import_core.getInput)("packages", { required: true });
   (0, import_core.info)(`readActionConfig: packages are specified as [${rawPackages}]`);
   const branchName = (0, import_core.getInput)("branch_name");
@@ -9040,6 +9041,7 @@ var readActionConfig = () => {
     manifestPath: (0, import_core.getInput)("manifest_path"),
     incompatible: (0, import_core.getInput)("incompatible") === "true",
     ghToken: (0, import_core.getInput)("token", { required: true }),
+    mandatoryPackages: ((_a = (0, import_core.getInput)("mandatory_packages")) == null ? void 0 : _a.split(",")) ?? [],
     prTitle: `[BOT] build(cargo): upgrade dependencies ${upgradeAll ? "" : `for ${rawPackages}`}`
   };
   (0, import_core.info)(`readActionConfig: returning [${JSON.stringify(ret)}]`);
@@ -9068,7 +9070,9 @@ var checkCargoBinaries = async () => {
   };
   const cargoVersionResult = await (0, import_exec.exec)("cargo", ["--version"]);
   if (cargoVersionResult !== 0) {
-    throw new Error(`Action could not able to execute cargo command. Please check if cargo is installed and available in PATH`);
+    throw new Error(
+      `Action could not able to execute cargo command. Please check if cargo is installed and available in PATH`
+    );
   }
   await tryInstall("upgrade", "cargo-edit", "0.11.6");
   await tryInstall("outdated", "cargo-outdated", "0.11.1");
@@ -9096,8 +9100,8 @@ var checkOutdated = async (pkg) => {
   (0, import_core2.info)(`checkOutdated: [${pkg}] is outdated: ${isOutdated}`);
   return isOutdated > 0;
 };
-var runUpgrade = async (packages, upgradeAll, incompatible) => {
-  const upgradedPackages = [];
+var runUpgrade = async (packages, upgradeAll, incompatible, mandatoryPackages) => {
+  const packagesToUpgrade = [];
   const upgrade = async (pkg) => {
     const options = pkg ? ["upgrade", "-p", pkg, "--recursive", "false"] : ["upgrade"];
     if (incompatible) {
@@ -9118,18 +9122,28 @@ var runUpgrade = async (packages, upgradeAll, incompatible) => {
     for (const pkg of packages) {
       const isOutdated = await checkOutdated(pkg);
       (0, import_core2.info)(`Package [${pkg}] is outdated: ${isOutdated}`);
-      if (isOutdated && !upgradedPackages.includes(pkg)) {
-        upgradedPackages.push(pkg);
+      if (isOutdated && !packagesToUpgrade.includes(pkg)) {
+        packagesToUpgrade.push(pkg);
       }
     }
-    for (const pkg of upgradedPackages) {
+    (0, import_core2.info)(`Found outdated packages: ${packagesToUpgrade}`);
+    if (mandatoryPackages.length > 0) {
+      const areAllPackagesReady = mandatoryPackages.every((pkg) => packagesToUpgrade.includes(pkg));
+      if (!areAllPackagesReady) {
+        (0, import_core2.info)(`Not all mandatory packages are upgraded. Skipping PR creation`);
+        (0, import_core2.info)(`Mandatory packages: ${mandatoryPackages}`);
+        return false;
+      }
+    }
+    for (const pkg of packagesToUpgrade) {
+      (0, import_core2.info)(`Trying to upgrade package [${pkg}]`);
       await upgrade(pkg);
     }
-    if (upgradedPackages.length === 0) {
+    if (packagesToUpgrade.length === 0) {
       (0, import_core2.info)(`No packages to upgrade`);
       return false;
     } else {
-      (0, import_core2.info)(`Upgraded packages: ${upgradedPackages}`);
+      (0, import_core2.info)(`Upgraded packages: ${packagesToUpgrade}`);
     }
   }
   return true;
@@ -9174,22 +9188,25 @@ var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
     deleted: true
   });
   (0, import_core2.info)(`Found updated files: ${updatedFiles}`);
-  const changes = updatedFiles.reduce((acc, file) => {
-    if (acc.files) {
-      acc.files[file] = ({ exists }) => {
-        if (!exists) {
-          (0, import_core2.info)(`File ${file} does not exist, will not create it`);
-          return null;
-        }
-        return (0, import_fs.readFileSync)(file, "utf-8");
-      };
+  const changes = updatedFiles.reduce(
+    (acc, file) => {
+      if (acc.files) {
+        acc.files[file] = ({ exists }) => {
+          if (!exists) {
+            (0, import_core2.info)(`File ${file} does not exist, will not create it`);
+            return null;
+          }
+          return (0, import_fs.readFileSync)(file, "utf-8");
+        };
+      }
+      return acc;
+    },
+    {
+      files: {},
+      commit: "build(cargo): update dependencies",
+      emptyCommit: false
     }
-    return acc;
-  }, {
-    files: {},
-    commit: "build(cargo): update dependencies",
-    emptyCommit: false
-  });
+  );
   const basePRBody = `Hello! This is a friendly bot trying to update some of the dependencies in this repository.
 
   This PR is result of running bots for you. If there are new updates, this PR will try to replace existing commit with new ones.
@@ -9197,7 +9214,9 @@ var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
 
   You can add new commits on top of this PR to do so. Then bot will not try to update PR and let you resolve it.
 
-  ${((notifiedUsers == null ? void 0 : notifiedUsers.length) ?? 0) > 0 ? `Bot could see there are some users may check on this PR, so mentioned in here: ${notifiedUsers == null ? void 0 : notifiedUsers.map((user) => `@${user}`)}` : ""}`;
+  ${((notifiedUsers == null ? void 0 : notifiedUsers.length) ?? 0) > 0 ? `Bot could see there are some users may check on this PR, so mentioned in here: ${notifiedUsers == null ? void 0 : notifiedUsers.map(
+    (user) => `@${user}`
+  )}` : ""}`;
   const prBody = isCheckSuccess ? basePRBody : `${basePRBody}
 
   It Looks like there were some errors while trying to upgrade dependencies. Please check below error message:
@@ -9222,9 +9241,9 @@ var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
   }
 };
 var main = async () => {
-  const { packages, upgradeAll, incompatible, ghToken, branchName, prTitle, notifiedUsers } = readActionConfig();
+  const { packages, upgradeAll, incompatible, ghToken, branchName, prTitle, notifiedUsers, mandatoryPackages } = readActionConfig();
   await checkCargoBinaries();
-  await runUpgrade(packages, upgradeAll, incompatible);
+  await runUpgrade(packages, upgradeAll, incompatible, mandatoryPackages);
   await buildPullRequest(ghToken, branchName, prTitle, notifiedUsers);
 };
 main();
