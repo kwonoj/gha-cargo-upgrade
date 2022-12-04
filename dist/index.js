@@ -9135,9 +9135,14 @@ var runUpgrade = async (packages, upgradeAll, incompatible) => {
   return true;
 };
 var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
-  let checkErrorMsg = null;
+  let checkErrorMsg = "";
   try {
-    await (0, import_exec.exec)("cargo", ["check"]);
+    await (0, import_exec.exec)("cargo", ["check"], {
+      listeners: {
+        stderr: (data) => checkErrorMsg += data.toString(),
+        stdout: (data) => checkErrorMsg += data.toString()
+      }
+    });
   } catch (e) {
     checkErrorMsg = e.message;
   }
@@ -9192,7 +9197,7 @@ var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
   You can add new commits on top of this PR to do so. Then bot will not try to update PR and let you resolve it.
 
   ${((notifiedUsers == null ? void 0 : notifiedUsers.length) ?? 0) > 0 ? `Bot could see there are some users may check on this PR, so mentioned in here: ${notifiedUsers == null ? void 0 : notifiedUsers.map((user) => `@${user}`)}` : ""}`;
-  const prBody = checkErrorMsg ? `${basePRBody}
+  const prBody = checkErrorMsg !== "" ? `${basePRBody}
 
   It Looks like there were some errors while trying to upgrade dependencies. Please check below error message:
 
