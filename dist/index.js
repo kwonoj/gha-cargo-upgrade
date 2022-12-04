@@ -9139,8 +9139,7 @@ var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
   try {
     await (0, import_exec.exec)("cargo", ["check"], {
       listeners: {
-        stderr: (data) => checkErrorMsg += data.toString(),
-        stdout: (data) => checkErrorMsg += data.toString()
+        stderr: (data) => checkErrorMsg += data.toString()
       }
     });
   } catch (e) {
