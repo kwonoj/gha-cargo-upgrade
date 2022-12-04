@@ -9,6 +9,7 @@ interface UpdateActionConfig {
   incompatible: boolean;
   ghToken: string;
   prTitle: string;
+  mandatoryPackages: Array<string>;
 }
 
 /**
@@ -28,26 +29,24 @@ const readActionConfig = (): UpdateActionConfig => {
     info(`readActionConfig: notifiedUsers are specified as [${notifiedUsers}]`);
   }
 
-  const upgradeAll = rawPackages === "*";
+  const upgradeAll = rawPackages === '*';
   const packages = upgradeAll ? [] : rawPackages.split(',');
 
   const ret: UpdateActionConfig = {
     packages,
     upgradeAll,
-    branchName: branchName || "__gha-cargo-upgrade-action",
+    branchName: branchName || '__gha-cargo-upgrade-action',
     notifiedUsers: notifiedUsers ? notifiedUsers.split(',') : [],
     manifestPath: getInput('manifest_path'),
     incompatible: getInput('incompatible') === 'true',
     ghToken: getInput('token', { required: true }),
+    mandatoryPackages: getInput('mandatory_packages')?.split(',') ?? [],
     // [TODO] This is not configurable for now
     prTitle: `[BOT] build(cargo): upgrade dependencies ${upgradeAll ? '' : `for ${rawPackages}`}`,
-  }
+  };
 
   info(`readActionConfig: returning [${JSON.stringify(ret)}]`);
   return ret;
-}
+};
 
-export {
-  readActionConfig,
-  UpdateActionConfig
-}
+export { readActionConfig, UpdateActionConfig };
