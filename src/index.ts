@@ -115,8 +115,11 @@ const runUpgrade = async (packages: Array<string>, upgradeAll: boolean, incompat
       info(`Package [${pkg}] is outdated: ${isOutdated}`);
       if (isOutdated && !upgradedPackages.includes(pkg)) {
         upgradedPackages.push(pkg);
-        await upgrade(pkg);
       }
+    }
+
+    for (const pkg of upgradedPackages) {
+      await upgrade(pkg);
     }
 
     if (upgradedPackages.length === 0) {
@@ -137,6 +140,15 @@ const runUpgrade = async (packages: Array<string>, upgradeAll: boolean, incompat
  * However, will hold updates if user manually add new commits to the PR.
  */
 const buildPullRequest = async (ghToken: string, branchName: string, prTitle: string, notifiedUsers?: Array<string>) => {
+  // Basic sanity check to update cargo.lock, but proceed if we can't.
+  let checkErrorMsg = null;
+  try {
+    await exec('cargo', ['check']);
+  } catch (e) {
+    checkErrorMsg = (e as any).message;
+  }
+
+
   const octokit = getOctokit(ghToken);
 
   // Get the lists of existing open PRs
@@ -208,10 +220,20 @@ const buildPullRequest = async (ghToken: string, branchName: string, prTitle: st
 
   ${(notifiedUsers?.length ?? 0) > 0 ? `Bot could see there are some users may check on this PR, so mentioned in here: ${notifiedUsers?.map((user) => `@${user}`)}` : ''}`;
 
+
+  const prBody = checkErrorMsg ? `${basePRBody}
+
+  It Looks like there were some errors while trying to upgrade dependencies. Please check below error message:
+
+  \`\`\`
+  ${checkErrorMsg}
+  \`\`\`
+  ` : basePRBody;
+
   const prResponse = await createPullRequest(octokit).createPullRequest({
     ...context.repo,
     title: prTitle,
-    body: basePRBody,
+    body: prBody,
     head: branchName,
     update: true,
     createWhenEmpty: false,

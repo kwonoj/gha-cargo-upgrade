@@ -9120,8 +9120,10 @@ var runUpgrade = async (packages, upgradeAll, incompatible) => {
       (0, import_core2.info)(`Package [${pkg}] is outdated: ${isOutdated}`);
       if (isOutdated && !upgradedPackages.includes(pkg)) {
         upgradedPackages.push(pkg);
-        await upgrade(pkg);
       }
+    }
+    for (const pkg of upgradedPackages) {
+      await upgrade(pkg);
     }
     if (upgradedPackages.length === 0) {
       (0, import_core2.info)(`No packages to upgrade`);
@@ -9133,6 +9135,12 @@ var runUpgrade = async (packages, upgradeAll, incompatible) => {
   return true;
 };
 var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
+  let checkErrorMsg = null;
+  try {
+    await (0, import_exec.exec)("cargo", ["check"]);
+  } catch (e) {
+    checkErrorMsg = e.message;
+  }
   const octokit = (0, import_github.getOctokit)(ghToken);
   const currentOpenPullRequests = await octokit.paginate(octokit.rest.pulls.list, {
     ...import_github.context.repo,
@@ -9184,10 +9192,18 @@ var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
   You can add new commits on top of this PR to do so. Then bot will not try to update PR and let you resolve it.
 
   ${((notifiedUsers == null ? void 0 : notifiedUsers.length) ?? 0) > 0 ? `Bot could see there are some users may check on this PR, so mentioned in here: ${notifiedUsers == null ? void 0 : notifiedUsers.map((user) => `@${user}`)}` : ""}`;
+  const prBody = checkErrorMsg ? `${basePRBody}
+
+  It Looks like there were some errors while trying to upgrade dependencies. Please check below error message:
+
+  \`\`\`
+  ${checkErrorMsg}
+  \`\`\`
+  ` : basePRBody;
   const prResponse = await (0, import_octokit_plugin_create_pull_request.createPullRequest)(octokit).createPullRequest({
     ...import_github.context.repo,
     title: prTitle,
-    body: basePRBody,
+    body: prBody,
     head: branchName,
     update: true,
     createWhenEmpty: false,
