@@ -296,8 +296,10 @@ const main = async () => {
     readActionConfig();
 
   await checkCargoBinaries();
-  await runUpgrade(packages, upgradeAll, incompatible, mandatoryPackages);
-  await buildPullRequest(ghToken, branchName, prTitle, notifiedUsers);
+  const shouldCreateUpgradePR = await runUpgrade(packages, upgradeAll, incompatible, mandatoryPackages);
+  if (shouldCreateUpgradePR) {
+    await buildPullRequest(ghToken, branchName, prTitle, notifiedUsers);
+  }
 };
 
 main();
