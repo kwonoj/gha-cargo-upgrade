@@ -40,7 +40,10 @@ const readActionConfig = (): UpdateActionConfig => {
     manifestPath: getInput('manifest_path'),
     incompatible: getInput('incompatible') === 'true',
     ghToken: getInput('token', { required: true }),
-    mandatoryPackages: getInput('mandatory_packages')?.split(',') ?? [],
+    mandatoryPackages:
+      getInput('mandatory_packages')
+        ?.split(',')
+        .filter((x) => !!x && x.length > 0) ?? [],
     // [TODO] This is not configurable for now
     prTitle: `[BOT] build(cargo): upgrade dependencies ${upgradeAll ? '' : `for ${rawPackages}`}`,
   };
