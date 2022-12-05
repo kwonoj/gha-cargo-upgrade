@@ -9041,7 +9041,7 @@ var readActionConfig = () => {
     manifestPath: (0, import_core.getInput)("manifest_path"),
     incompatible: (0, import_core.getInput)("incompatible") === "true",
     ghToken: (0, import_core.getInput)("token", { required: true }),
-    mandatoryPackages: ((_a = (0, import_core.getInput)("mandatory_packages")) == null ? void 0 : _a.split(",")) ?? [],
+    mandatoryPackages: ((_a = (0, import_core.getInput)("mandatory_packages")) == null ? void 0 : _a.split(",").filter((x) => !!x && x.length > 0)) ?? [],
     prTitle: `[BOT] build(cargo): upgrade dependencies ${upgradeAll ? "" : `for ${rawPackages}`}`
   };
   (0, import_core.info)(`readActionConfig: returning [${JSON.stringify(ret)}]`);
@@ -9186,7 +9186,7 @@ var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
     modified: true,
     added: true,
     deleted: true
-  });
+  }) ?? [];
   (0, import_core2.info)(`Found updated files: ${updatedFiles}`);
   const changes = updatedFiles.reduce(
     (acc, file) => {
@@ -9209,8 +9209,10 @@ var buildPullRequest = async (ghToken, branchName, prTitle, notifiedUsers) => {
   );
   const basePRBody = `Hello! This is a friendly bot trying to update some of the dependencies in this repository.
 
-  This PR is result of running bots for you. If there are new updates, this PR will try to replace existing commit with new ones.
-  Unfortunately it cannot resolve conflicts, or resolve breaking changes automatically - if it happens, please try to resolve it manually.
+  This PR is result of running bots for you.
+  If there are new updates, this PR will try to replace existing commit with new ones.
+  Unfortunately it cannot resolve conflicts, or resolve breaking changes automatically.
+  If it happens, please try to resolve it manually.
 
   You can add new commits on top of this PR to do so. Then bot will not try to update PR and let you resolve it.
 
