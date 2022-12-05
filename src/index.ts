@@ -210,13 +210,14 @@ const buildPullRequest = async (
   }
 
   // Find updated files.
-  const updatedFiles: Array<string> = porcelain({
-    untracked: true,
-    // probably this won't happen, but just in case
-    modified: true,
-    added: true,
-    deleted: true,
-  });
+  const updatedFiles: Array<string> =
+    porcelain({
+      untracked: true,
+      // probably this won't happen, but just in case
+      modified: true,
+      added: true,
+      deleted: true,
+    }) ?? [];
 
   info(`Found updated files: ${updatedFiles}`);
 
@@ -247,8 +248,10 @@ const buildPullRequest = async (
 
   const basePRBody = `Hello! This is a friendly bot trying to update some of the dependencies in this repository.
 
-  This PR is result of running bots for you. If there are new updates, this PR will try to replace existing commit with new ones.
-  Unfortunately it cannot resolve conflicts, or resolve breaking changes automatically - if it happens, please try to resolve it manually.
+  This PR is result of running bots for you.
+  If there are new updates, this PR will try to replace existing commit with new ones.
+  Unfortunately it cannot resolve conflicts, or resolve breaking changes automatically.
+  If it happens, please try to resolve it manually.
 
   You can add new commits on top of this PR to do so. Then bot will not try to update PR and let you resolve it.
 
